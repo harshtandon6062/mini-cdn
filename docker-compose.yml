@@ -1,0 +1,20 @@
+# Alternative to run.sh: `cp .env.example .env && docker compose up --build`
+services:
+  origin:
+    build: .
+    command: uvicorn origin.main:app --host 0.0.0.0 --port 8001
+    env_file: .env
+    ports:
+      - "8001:8001"
+
+  edge:
+    build: .
+    command: uvicorn edge.main:create_app --factory --host 0.0.0.0 --port 8000 --no-access-log
+    env_file: .env
+    environment:
+      # Inside Docker the origin is reached by its service name, not localhost.
+      ORIGIN_URL: http://origin:8001
+    ports:
+      - "8000:8000"
+    depends_on:
+      - origin

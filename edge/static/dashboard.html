@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mini CDN Dashboard</title>
+  <link rel="stylesheet" href="/dashboard/static/dashboard.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Mini CDN</h1>
+      <p class="muted">Edge cache dashboard &middot; live, refreshes every 2s</p>
+    </div>
+    <span id="live" class="pill">connecting…</span>
+  </header>
+
+  <main>
+    <section class="cards">
+      <div class="card accent"><span class="label">Hit ratio</span><span class="value" id="hit-ratio">–</span></div>
+      <div class="card"><span class="label">Hits</span><span class="value" id="hits">–</span></div>
+      <div class="card"><span class="label">Misses</span><span class="value" id="misses">–</span></div>
+      <div class="card"><span class="label">Revalidated</span><span class="value" id="revalidations">–</span></div>
+      <div class="card"><span class="label">Rate limited (429)</span><span class="value" id="rate-limited">–</span></div>
+      <div class="card"><span class="label">Cache entries</span><span class="value" id="cache-entries">–</span></div>
+    </section>
+
+    <section class="panel">
+      <h2>Average latency at the edge</h2>
+      <p class="muted">A HIT never touches the origin. MISS and REVALIDATED pay the round trip.</p>
+      <div id="latency" class="bars"></div>
+    </section>
+
+    <div class="columns">
+      <section class="panel">
+        <h2>Traffic</h2>
+        <div class="row">
+          <button id="send-test">Send test requests</button>
+          <button id="send-burst" class="secondary">Send burst of 40</button>
+        </div>
+        <table>
+          <thead><tr><th>Path</th><th>Status</th><th>X-Cache</th><th>Age</th><th>Time</th></tr></thead>
+          <tbody id="results"><tr><td colspan="5" class="muted">No requests yet.</td></tr></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Admin</h2>
+        <form id="login-form">
+          <label>Username <input name="username" value="admin" autocomplete="username"></label>
+          <label>Password <input name="password" type="password" autocomplete="current-password"></label>
+          <button type="submit">Log in</button>
+        </form>
+        <p id="auth-status" class="muted">Not logged in. Purging needs a JWT.</p>
+        <form id="purge-form">
+          <label>Path to purge <input name="path" placeholder="/api/products (empty = everything)"></label>
+          <div class="row">
+            <button type="submit" class="danger">Purge path</button>
+            <button type="button" id="purge-all" class="danger secondary">Purge all</button>
+          </div>
+        </form>
+        <p id="purge-status" class="muted"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="/dashboard/static/dashboard.js"></script>
+</body>
+</html>
