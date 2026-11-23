@@ -3,11 +3,15 @@
 The fake origin is plugged in with httpx.MockTransport, so the edge's real
 OriginClient code runs but no network is used. The fake clock lets tests
 "wait" 60 seconds instantly.
+
+Zero trust is OFF by default here so the plain CDN tests stay simple;
+tests/test_zero_trust.py turns it on with make_edge(zero_trust_enabled=True).
 """
 
 from collections.abc import Iterator
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import bcrypt
 import httpx
@@ -18,6 +22,10 @@ from edge.config import Settings
 from edge.main import create_app
 
 ADMIN_PASSWORD = "correct-horse"
+USER_PASSWORD = "user-pass"  # password of alice (engineer) and bob (intern)
+JWT_SECRET = "test-secret-that-is-long-enough-for-hs256"
+
+TEST_POLICY = Path(__file__).parent / "test_policy.json"
 ETAG = '"v1"'
 
 # path -> (body, Cache-Control) served by the fake origin
@@ -28,6 +36,7 @@ ORIGIN_ROUTES = {
     "/a": (b"a", "max-age=60"),
     "/b": (b"b", "max-age=60"),
     "/c": (b"c", "max-age=60"),
+    "/internal/report": (b'{"secret":true}', "private, max-age=60"),
 }
 
 
@@ -67,20 +76,34 @@ class EdgeHarness:
     origin: FakeOrigin
     clock: FakeClock
 
-    def login(self) -> str:
-        response = self.client.post(
-            "/admin/login", json={"username": "admin", "password": ADMIN_PASSWORD}
-        )
+    def login(self, username: str = "admin") -> str:
+        password = ADMIN_PASSWORD if username == "admin" else USER_PASSWORD
+        response = self.client.post("/auth/login", json={"username": username, "password": password})
         assert response.status_code == 200
         return response.json()["access_token"]
+
+    def get_as(self, username: str, path: str, token: str | None = None):
+        """GET path with the user's Bearer token (logs in if no token given)."""
+        token = token or self.login(username)
+        return self.client.get(path, headers={"Authorization": f"Bearer {token}"})
+
+
+def _hash(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=4)).decode()  # fast for tests
 
 
 def make_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "origin_url": "http://origin.test",
-        "jwt_secret": "test-secret-that-is-long-enough-for-hs256",
+        "jwt_secret": JWT_SECRET,
         "admin_username": "admin",
-        "admin_password_hash": bcrypt.hashpw(ADMIN_PASSWORD.encode(), bcrypt.gensalt(rounds=4)).decode(),
+        "admin_password_hash": _hash(ADMIN_PASSWORD),
+        "users": {
+            "alice": {"role": "engineer", "password_hash": _hash(USER_PASSWORD)},
+            "bob": {"role": "intern", "password_hash": _hash(USER_PASSWORD)},
+        },
+        "zero_trust_enabled": False,
+        "policy_file": str(TEST_POLICY),
         "rate_limit_capacity": 1000,
         "rate_limit_refill_per_second": 1000.0,
         **overrides,

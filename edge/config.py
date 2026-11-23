@@ -4,7 +4,17 @@ All tunables and secrets live here, so nothing secret is written in the code
 and every limit can be changed without editing Python.
 """
 
+from pathlib import Path
+
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_POLICY_FILE = Path(__file__).resolve().parent.parent / "policy.json"
+
+
+class UserAccount(BaseModel):
+    role: str
+    password_hash: str  # bcrypt hash, see scripts/hash_password.py
 
 
 class Settings(BaseSettings):
@@ -23,3 +33,14 @@ class Settings(BaseSettings):
     jwt_expiry_minutes: int = 15
     admin_username: str = "admin"
     admin_password_hash: str  # bcrypt hash, see scripts/hash_password.py
+
+    # Zero trust: every proxied request needs a valid user JWT + a policy match.
+    zero_trust_enabled: bool = True
+    policy_file: str = str(DEFAULT_POLICY_FILE)
+    # Extra users as JSON, e.g. {"alice": {"role": "engineer", "password_hash": "..."}}
+    users: dict[str, UserAccount] = {}
+
+    def all_users(self) -> dict[str, UserAccount]:
+        """The configured users plus the admin account (role "admin")."""
+        admin = UserAccount(role="admin", password_hash=self.admin_password_hash)
+        return {**self.users, self.admin_username: admin}

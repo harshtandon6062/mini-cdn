@@ -21,9 +21,10 @@ from edge.cache import Cache
 from edge.config import Settings
 from edge.middleware import log_requests
 from edge.origin_client import OriginClient
+from edge.policy import AccessPolicy
 from edge.proxy_service import ProxyService
 from edge.rate_limiter import RateLimiter
-from edge.routes import admin, dashboard, proxy
+from edge.routes import admin, auth, dashboard, proxy
 from edge.stats import Stats
 
 
@@ -49,15 +50,15 @@ def create_app(
     app.state.rate_limiter = RateLimiter(
         settings.rate_limit_capacity, settings.rate_limit_refill_per_second, clock
     )
+    app.state.settings = settings
     app.state.auth = AuthService(
-        settings.admin_username,
-        settings.admin_password_hash,
-        settings.jwt_secret,
-        settings.jwt_expiry_minutes,
+        settings.all_users(), settings.jwt_secret, settings.jwt_expiry_minutes
     )
+    app.state.policy = AccessPolicy.from_file(settings.policy_file)
 
     app.middleware("http")(log_requests)
     # Order matters: specific routes first, the catch-all proxy route last.
+    app.include_router(auth.router)
     app.include_router(admin.router)
     app.include_router(dashboard.router)
     app.mount("/dashboard/static", StaticFiles(directory=dashboard.STATIC_DIR), name="dashboard-static")

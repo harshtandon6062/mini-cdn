@@ -1,19 +1,21 @@
-"""Catch-all route: every GET that is not /admin or /dashboard goes to the origin via the cache.
+"""Catch-all route: every GET that is not /admin, /auth or /dashboard goes to the origin via the cache.
 
-This route is thin on purpose: it only turns HTTP into a service call and
-the service result back into HTTP (adding X-Cache and Age headers).
+Zero trust order: authenticate + authorize run BEFORE the rate limit and
+BEFORE the cache lookup, so cached content is never handed to someone the
+policy would block. The route itself stays thin: HTTP in, service call,
+HTTP out (adding X-Cache and Age headers).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
-from edge.dependencies import enforce_rate_limit, get_proxy_service
+from edge.dependencies import authorize, enforce_rate_limit, get_proxy_service
 from edge.origin_client import OriginUnavailableError
 from edge.proxy_service import ProxyService
 
 router = APIRouter()
 
 
-@router.get("/{path:path}", dependencies=[Depends(enforce_rate_limit)])
+@router.get("/{path:path}", dependencies=[Depends(authorize), Depends(enforce_rate_limit)])
 async def proxy(
     path: str, request: Request, service: ProxyService = Depends(get_proxy_service)
 ) -> Response:

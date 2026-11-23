@@ -1,0 +1,10 @@
+{
+  "rules": [
+    {"path": "/", "roles": ["*"]},
+    {"path": "/about", "roles": ["*"]},
+    {"path": "/products", "roles": ["*"]},
+    {"path": "/static/*", "roles": ["*"]},
+    {"path": "/api/*", "roles": ["engineer", "admin"]},
+    {"path": "/internal/*", "roles": ["admin"]}
+  ]
+}

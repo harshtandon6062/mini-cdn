@@ -4,6 +4,7 @@ Every route chooses its own Cache-Control policy:
   * HTML pages      -> public, max-age=30   (change rarely)
   * JSON API        -> public, max-age=10   (change more often)
   * /api/time       -> no-store             (different on every request)
+  * /internal/...   -> private              (a private app: edge must not cache it)
   * hashed CSS file -> max-age=1 year, immutable (cache busting)
 
 An artificial delay (ORIGIN_DELAY_MS, default 300) makes the origin feel
@@ -67,6 +68,13 @@ def get_product(request: Request, product_id: int) -> Response:
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     return cacheable_response(request, json_bytes(product.model_dump()), "application/json", API_POLICY)
+
+
+@app.get("/internal/reports")
+def internal_reports(request: Request) -> Response:
+    """A private internal app: only admins may reach it through the gateway."""
+    report = {"quarter": "Q4", "revenue_usd": 1_250_000, "confidential": True}
+    return cacheable_response(request, json_bytes(report), "application/json", "private, max-age=60")
 
 
 @app.get("/api/time")

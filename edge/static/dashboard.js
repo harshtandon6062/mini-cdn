@@ -2,7 +2,7 @@
 // Plain browser JavaScript, no framework, no build step.
 
 const TEST_PATHS = ["/", "/products", "/api/products", "/api/products/1",
-                    "/api/products?category=books", "/api/time"];
+                    "/api/products?category=books", "/api/time", "/internal/reports"];
 const COLORS = { HIT: "var(--hit)", REVALIDATED: "var(--reval)", MISS: "var(--miss)" };
 let token = null; // JWT kept in memory only: gone when the tab closes.
 
@@ -18,6 +18,8 @@ async function refreshStats() {
     $("revalidations").textContent = s.revalidations;
     $("rate-limited").textContent = s.rate_limited;
     $("cache-entries").textContent = `${s.cache_entries} / ${s.cache_capacity}`;
+    $("allowed").textContent = s.access_decisions.ALLOWED;
+    $("denied").textContent = s.access_decisions.DENIED_401 + s.access_decisions.DENIED_403;
     renderLatency(s.avg_latency_ms);
     setLive(true);
   } catch {
@@ -42,7 +44,8 @@ function renderLatency(avg) {
 
 async function timedGet(path) {
   const started = performance.now();
-  const res = await fetch(path, { cache: "no-store" }); // bypass the browser cache, test the edge
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}; // zero trust: send who we are
+  const res = await fetch(path, { cache: "no-store", headers }); // bypass the browser cache, test the edge
   return {
     path,
     status: res.status,
@@ -78,7 +81,7 @@ async function sendBurst() {
 async function login(event) {
   event.preventDefault();
   const form = new FormData(event.target);
-  const res = await fetch("/admin/login", {
+  const res = await fetch("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: form.get("username"), password: form.get("password") }),
@@ -90,7 +93,7 @@ async function login(event) {
   }
   const body = await res.json();
   token = body.access_token;
-  $("auth-status").textContent = `Logged in. Token expires in ${body.expires_in / 60} min.`;
+  $("auth-status").textContent = `Logged in as ${form.get("username")} (${body.role}). Token expires in ${body.expires_in / 60} min.`;
 }
 
 async function purge(path) {
@@ -101,7 +104,7 @@ async function purge(path) {
   });
   $("purge-status").textContent = res.ok
     ? `Purged ${(await res.json()).purged} entries ${path ? "for " + path : "(everything)"}.`
-    : `Purge refused: ${res.status} ${res.status === 401 ? "(log in first)" : ""}`;
+    : `Purge refused: ${res.status} ${res.status === 401 ? "(log in first)" : res.status === 403 ? "(admin role needed)" : ""}`;
   refreshStats();
 }
 

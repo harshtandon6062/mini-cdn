@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mini CDN Dashboard</title>
+  <title>Mini CDN Gateway</title>
   <link rel="stylesheet" href="/dashboard/static/dashboard.css">
 </head>
 <body>
   <header>
     <div>
-      <h1>Mini CDN</h1>
-      <p class="muted">Edge cache dashboard &middot; live, refreshes every 2s</p>
+      <h1>Mini CDN &middot; Zero-Trust Gateway</h1>
+      <p class="muted">Identity-aware edge cache &middot; live, refreshes every 2s</p>
     </div>
     <span id="live" class="pill">connecting…</span>
   </header>
@@ -23,6 +23,8 @@
       <div class="card"><span class="label">Revalidated</span><span class="value" id="revalidations">–</span></div>
       <div class="card"><span class="label">Rate limited (429)</span><span class="value" id="rate-limited">–</span></div>
       <div class="card"><span class="label">Cache entries</span><span class="value" id="cache-entries">–</span></div>
+      <div class="card"><span class="label">Access allowed</span><span class="value" id="allowed">–</span></div>
+      <div class="card"><span class="label">Access denied (401/403)</span><span class="value" id="denied">–</span></div>
     </section>
 
     <section class="panel">
@@ -45,13 +47,14 @@
       </section>
 
       <section class="panel">
-        <h2>Admin</h2>
+        <h2>Sign in</h2>
+        <p class="muted">Zero trust: traffic needs a user token. Try alice (engineer), bob (intern) or admin.</p>
         <form id="login-form">
-          <label>Username <input name="username" value="admin" autocomplete="username"></label>
+          <label>Username <input name="username" value="alice" autocomplete="username"></label>
           <label>Password <input name="password" type="password" autocomplete="current-password"></label>
           <button type="submit">Log in</button>
         </form>
-        <p id="auth-status" class="muted">Not logged in. Purging needs a JWT.</p>
+        <p id="auth-status" class="muted">Not logged in. Requests will get 401. Purging needs the admin role.</p>
         <form id="purge-form">
           <label>Path to purge <input name="path" placeholder="/api/products (empty = everything)"></label>
           <div class="row">

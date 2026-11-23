@@ -21,6 +21,7 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    role: str
     expires_in: int = Field(description="Seconds until the token expires")
 
 
@@ -42,5 +43,6 @@ class StatsResponse(BaseModel):
     hit_ratio: float
     avg_latency_ms: dict[str, float]
     rate_limited: int
+    access_decisions: dict[str, int]
     cache_entries: int
     cache_capacity: int
